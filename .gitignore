@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Project data and artifacts
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/benchmarks/*
+!data/benchmarks/.gitkeep
+data/processed/*.jsonl
+data/processed/*.json
+!data/processed/.gitkeep
+checkpoints/
+outputs/
+logs/
+wandb/
+
+# Large model artifacts
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+
+# Runtime reports are generated from real runs.
+reports/*.json
+reports/*.md
+!reports/figures/.gitkeep
+!reports/tables/.gitkeep
+
+# Local Chinese reference docs, not intended for GitHub upload.
+docs_zh/
