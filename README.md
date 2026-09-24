@@ -25,25 +25,42 @@ generated from real runs.
 ## System Architecture
 
 ```mermaid
-flowchart LR
-    A[HuatuoGPT] --> C[Data Governance]
-    B[TCM Dataset] --> C
-    C --> D[80k Medical SFT Dataset]
-    D --> E[Qwen3-8B Full SFT]
-    E --> F[DeepSpeed ZeRO-3, 4xA800 80GB]
-    F --> G[Pharma-SFT Model]
+flowchart TB
+    subgraph D["Data Pipeline"]
+        A1[HuatuoGPT] --> A3[Normalize to SFT JSONL]
+        A2[TCM Data] --> A3
+        A3 --> A4[Schema Validation]
+        A4 --> A5[Exact Deduplication]
+        A5 --> A6[Stratified Train / Val Split]
+    end
 
-    H[CMB-Exam] --> I[Evaluation]
-    J[MedQA-ZH] --> I
-    G --> I
+    subgraph T["Training"]
+        B1[Qwen3-8B-Base] --> B2[Full-parameter SFT]
+        B1 --> B3[LoRA r16 SFT]
+        A6 --> B2
+        A6 --> B3
+        B2 --> B4[Full SFT Model]
+        B3 --> B5[Merged LoRA Model]
+    end
 
-    G --> K[AWQ INT4]
-    K --> L[vLLM TP=4]
-    G --> L
-    L --> M[OpenAI-compatible API]
-    M --> N[Gradio Demo]
-    L --> O[Serving Benchmark]
-    O --> P[TTFT / TPOT / P95 / Throughput / VRAM]
+    subgraph E["Evaluation"]
+        C1[CMB-Exam]
+        C2[MedQA-ZH]
+        C3[Base / SFT / LoRA / Qwen3 Comparison]
+        B4 --> C3
+        B5 --> C3
+        C1 --> C3
+        C2 --> C3
+    end
+
+    subgraph S["Serving"]
+        B4 --> D1[vLLM Tensor Parallel]
+        B5 --> D1
+        D1 --> D2[OpenAI-compatible API]
+        D2 --> D3[Gradio Demo]
+        D2 --> D4[Serving Benchmark]
+        D4 --> D5[Latency / TTFT / TPOT / Throughput / VRAM]
+    end
 ```
 
 ## Dataset
@@ -85,13 +102,15 @@ The canonical SFT JSONL schema is:
 Current implemented modules:
 
 - `pharma_llm.data.schema`: canonical schema helpers.
+- `pharma_llm.data.normalize`: HuatuoGPT and TCM normalization.
 - `pharma_llm.data.validate`: JSONL schema validation.
 - `pharma_llm.data.dedup`: exact duplicate removal using normalized
   `user + assistant` text hashes.
+- `pharma_llm.data.split`: stratified train/validation splitting.
 
-Planned next data modules include source-specific normalization, text cleaning,
-length filtering with tokenizer counts, near deduplication, contamination
-checks, stratified sampling, and report generation.
+Potential next data modules include text cleaning, tokenizer-based length
+filtering, near deduplication, benchmark contamination checks, and more detailed
+data reports.
 
 ## Training
 
@@ -101,9 +120,10 @@ Training is configuration-driven:
 - SFT config: `configs/train_sft.yaml`
 - DeepSpeed config: `deepspeed/zero3.json`
 
-The first full training target is Qwen3-8B full-parameter SFT with BF16,
-FlashAttention-2, gradient checkpointing, and DeepSpeed ZeRO-3 on 4x A800
-80GB GPUs.
+The main training run uses Qwen3-8B-Base full-parameter SFT with BF16,
+gradient checkpointing, assistant-only loss masking, and DeepSpeed ZeRO-3 on
+4x A800 80GB GPUs. A LoRA r16 training path is also provided for lower-cost
+comparison experiments.
 
 ## Evaluation
 
@@ -112,9 +132,9 @@ Benchmark targets:
 - CMB-Exam
 - MedQA-ZH
 
-The project will evaluate the base model before SFT, then evaluate the SFT
-model with the same benchmark pipeline. Result files are generated under
-`reports/` and should not be hand-edited.
+The project evaluates Qwen3-8B-Base, Full SFT, LoRA, and the official Qwen3-8B
+model with the same benchmark pipeline. Runtime JSON reports are generated
+under `reports/` and should not be hand-edited.
 
 ## Deployment
 
@@ -128,7 +148,7 @@ Service settings live in `configs/serving.yaml`.
 
 ## Serving Benchmark
 
-Planned serving metrics:
+Serving metrics:
 
 - TTFT
 - TPOT
@@ -221,8 +241,32 @@ pytest -q
 
 ## Results
 
-No benchmark, training, quantization, or serving results are filled in before
-real execution. Generated report files will be written under `reports/`.
+The following metrics are generated from local runs. Raw datasets, model
+weights, checkpoints, and runtime JSON files are intentionally not committed.
+Detailed snapshots are available under `docs/results/`.
+
+### Benchmark Accuracy
+
+| Model | CMB-Exam | MedQA-ZH | Micro Avg |
+| --- | ---: | ---: | ---: |
+| Qwen3-8B-Base | 0.3571 | 0.2189 | 0.2294 |
+| Full SFT | 0.5893 | 0.8152 | 0.7982 |
+| LoRA r16 | 0.5607 | 0.8100 | 0.7911 |
+| Qwen3-8B | 0.6714 | 0.8471 | 0.8338 |
+
+Full SFT and LoRA both substantially improve over the raw Qwen3-8B-Base model
+on the medical multiple-choice benchmarks. The official Qwen3-8B model remains
+stronger, which is expected because it includes broader post-training for
+instruction following and reasoning.
+
+### Serving Benchmark
+
+Full SFT was deployed with vLLM tensor parallelism and benchmarked through an
+OpenAI-compatible API.
+
+| Requests | Error Rate | Avg Latency | P95 Latency | Avg TTFT | Output Throughput |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 108 | 0.0000 | 2.042s | 2.515s | 0.048s | 304.09 tokens/s |
 
 ## Demo
 
@@ -242,9 +286,10 @@ without qualified medical review.
 
 ## License
 
-MIT.
+MIT License. This is a permissive open-source license for the code in this
+repository. It does not grant rights to redistribute third-party datasets or
+model weights.
 
 ## Citation
 
 Citation metadata will be added after the first public release.
-
