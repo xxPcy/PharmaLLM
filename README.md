@@ -22,47 +22,6 @@ generated from real runs.
 - vLLM tensor-parallel serving with OpenAI-compatible API.
 - Prefix cache and serving benchmark experiments.
 
-## System Architecture
-
-```mermaid
-flowchart TB
-    subgraph D["Data Pipeline"]
-        A1[HuatuoGPT] --> A3[Normalize to SFT JSONL]
-        A2[TCM Data] --> A3
-        A3 --> A4[Schema Validation]
-        A4 --> A5[Exact Deduplication]
-        A5 --> A6[Stratified Train / Val Split]
-    end
-
-    subgraph T["Training"]
-        B1[Qwen3-8B-Base] --> B2[Full-parameter SFT]
-        B1 --> B3[LoRA r16 SFT]
-        A6 --> B2
-        A6 --> B3
-        B2 --> B4[Full SFT Model]
-        B3 --> B5[Merged LoRA Model]
-    end
-
-    subgraph E["Evaluation"]
-        C1[CMB-Exam]
-        C2[MedQA-ZH]
-        C3[Base / SFT / LoRA / Qwen3 Comparison]
-        B4 --> C3
-        B5 --> C3
-        C1 --> C3
-        C2 --> C3
-    end
-
-    subgraph S["Serving"]
-        B4 --> D1[vLLM Tensor Parallel]
-        B5 --> D1
-        D1 --> D2[OpenAI-compatible API]
-        D2 --> D3[Gradio Demo]
-        D2 --> D4[Serving Benchmark]
-        D4 --> D5[Latency / TTFT / TPOT / Throughput / VRAM]
-    end
-```
-
 ## Dataset
 
 Expected dataset layout:
