@@ -11,6 +11,21 @@ This repository intentionally does not commit raw datasets, model weights,
 checkpoints, logs, or generated result files. All metrics in reports should be
 generated from real runs.
 
+## Related Application: PharmaLLM-Agent
+
+**[Explore PharmaLLM-Agent →](https://github.com/xxPcy/PharmaLLM-Agent)**
+
+PharmaLLM-Agent extends this model-engineering project into a medical
+conversation and MRI segmentation workspace:
+
+- LangGraph agent orchestration, streaming chat, and bounded conversation context.
+- Natural-language T1 MRI segmentation requests, four-view visualization, and volume follow-up questions.
+- Asynchronous tasks with approval modes and department-based result review.
+
+This repository focuses on model training, evaluation, and serving; the
+application code, interface previews, and setup instructions are available in
+[PharmaLLM-Agent](https://github.com/xxPcy/PharmaLLM-Agent).
+
 ## Highlights
 
 - 80k curated Chinese medical instruction samples.
